@@ -1,0 +1,64 @@
+# .gitignore for OMR System
+
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Output files
+exam_*_results.txt
+exam_*_results.csv
+exam_*_results.jpg
+*.log
+
+# Tesseract training data (keep only language packs needed)
+tessdata/
+
+# Test images (keep only sample images)
+test_images/
+*.jpg
+*.png
+*.jpeg
+!sample_exam.jpg
+
+# Temporary files
+*.tmp
+*.bak
+
+# Compiled Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini

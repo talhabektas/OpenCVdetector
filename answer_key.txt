@@ -1,0 +1,31 @@
+# Cevap Anahtarı
+# Format: questionNum,type,answer
+# type: MC (Multiple Choice), FILL (Fill-in-the-Blank), TF (True/False)
+
+# Çoktan Seçmeli Sorular (1-10)
+# Answer format: 0=A, 1=B, 2=C, 3=D, 4=E
+1,MC,2
+2,MC,0
+3,MC,3
+4,MC,1
+5,MC,4
+6,MC,2
+7,MC,0
+8,MC,3
+9,MC,1
+10,MC,2
+
+# Boşluk Doldurma Soruları (11-15)
+11,FILL,Istanbul
+12,FILL,1923
+13,FILL,Ankara
+14,FILL,Mustafa Kemal
+15,FILL,Cumhuriyet
+
+# Doğru/Yanlış Soruları (16-20)
+# T = Doğru, F = Yanlış
+16,TF,T
+17,TF,F
+18,TF,T
+19,TF,T
+20,TF,F
