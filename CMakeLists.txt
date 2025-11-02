@@ -61,6 +61,76 @@ endif()
 # Install target
 install(TARGETS OMR_System DESTINATION bin)
 
+# OCR Test utility
+add_executable(ocr_test src/ocr_test.cpp)
+
+target_link_libraries(ocr_test
+    ${OpenCV_LIBS}
+    ${TESSERACT_LDFLAGS}
+    ${LEPTONICA_LDFLAGS}
+)
+
+target_include_directories(ocr_test PRIVATE
+    ${TESSERACT_INCLUDE_DIRS}
+    ${LEPTONICA_INCLUDE_DIRS}
+)
+
+# Manual Crop utility
+add_executable(manual_crop src/manual_crop.cpp)
+
+target_link_libraries(manual_crop
+    ${OpenCV_LIBS}
+)
+
+# Silent Crop - Pencere açmadan kırp
+add_executable(silent_crop src/silent_crop.cpp)
+
+target_link_libraries(silent_crop
+    ${OpenCV_LIBS}
+)
+
+# Image Preview utility
+add_executable(image_preview src/image_preview.cpp)
+
+target_link_libraries(image_preview
+    ${OpenCV_LIBS}
+)
+
+# Auto Text Detector - Yazı bölgelerini otomatik bul
+add_executable(auto_text_detector src/auto_text_detector.cpp)
+
+target_link_libraries(auto_text_detector
+    ${OpenCV_LIBS}
+)
+
+# Simple Line Detector - Projeksiyon profili ile satır bulma
+add_executable(simple_line_detector src/simple_line_detector.cpp)
+
+target_link_libraries(simple_line_detector
+    ${OpenCV_LIBS}
+)
+
+# Handwriting Reader - Tam otomatik el yazısı okuyucu
+add_executable(handwriting_reader src/handwriting_reader.cpp)
+
+target_link_libraries(handwriting_reader
+    ${OpenCV_LIBS}
+    ${TESSERACT_LDFLAGS}
+    ${LEPTONICA_LDFLAGS}
+)
+
+target_include_directories(handwriting_reader PRIVATE
+    ${TESSERACT_INCLUDE_DIRS}
+    ${LEPTONICA_INCLUDE_DIRS}
+)
+
+# Live Reader - Canlı kamera ile el yazısı okuma
+add_executable(live_reader src/live_reader.cpp)
+
+target_link_libraries(live_reader
+    ${OpenCV_LIBS}
+)
+
 # Print configuration
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV libs: ${OpenCV_LIBS}")

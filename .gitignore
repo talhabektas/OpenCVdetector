@@ -9,6 +9,14 @@ cmake-build-*/
 *.dylib
 *.dll
 *.exe
+*.jpg
+*.png
+*.txt (cevap dosyaları)
+*.sh (script'ler - opsiyonel)
+temp_*
+debug_*
+cropped_*
+preprocessed_*
 
 # IDE files
 .vscode/

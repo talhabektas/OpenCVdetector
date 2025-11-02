@@ -106,8 +106,14 @@ std::vector<QuestionRegion> SheetStructureAnalyzer::detectFillInBlankRegions(
     
     std::vector<QuestionRegion> regions;
     
+    std::cout << "[DEBUG] Görüntü boyutu: " << image.cols << "x" << image.rows << std::endl;
+    
     for (int i = 0; i < numQuestions; i++) {
         cv::Rect region = calculateFillInBlankRegion(i);
+        
+        std::cout << "[DEBUG] Soru " << (i+1) << " bölgesi: "
+                  << "x=" << region.x << ", y=" << region.y 
+                  << ", w=" << region.width << ", h=" << region.height << std::endl;
         
         // Validate region
         if (region.y + region.height <= image.rows &&
@@ -118,6 +124,8 @@ std::vector<QuestionRegion> SheetStructureAnalyzer::detectFillInBlankRegions(
                 QuestionRegion::FILL_IN_BLANK,
                 0
             );
+        } else {
+            std::cout << "[DEBUG] Soru " << (i+1) << " bölgesi geçersiz (görüntü dışında)" << std::endl;
         }
     }
     

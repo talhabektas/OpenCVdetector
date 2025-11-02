@@ -45,23 +45,17 @@ OCRProcessor::~OCRProcessor() {
     }
 }
 
-Pix* OCRProcessor::matToPix(const cv::Mat& image) {
-    // Convert to grayscale if needed
-    cv::Mat gray;
-    if (image.channels() == 3) {
-        cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-    } else {
-        gray = image.clone();
-    }
+// OpenCV Mat'ı Leptonica Pix'e dönüştür
+Pix* OCRProcessor::matToPix(const cv::Mat& mat) {
+    // En güvenilir yöntem: Dosyaya kaydet, Leptonica ile oku
+    static int tempCounter = 0;
+    std::string tempFile = "temp_pix_" + std::to_string(tempCounter++) + ".jpg";
     
-    // Create Pix from OpenCV Mat
-    Pix* pix = pixCreate(gray.cols, gray.rows, 8);
+    cv::imwrite(tempFile, mat);
+    Pix* pix = pixRead(tempFile.c_str());
     
-    for (int y = 0; y < gray.rows; y++) {
-        for (int x = 0; x < gray.cols; x++) {
-            pixSetPixel(pix, x, y, gray.at<uchar>(y, x));
-        }
-    }
+    // Temp dosyayı sil
+    std::remove(tempFile.c_str());
     
     return pix;
 }
@@ -171,9 +165,22 @@ std::string OCRProcessor::recognizeText(const cv::Mat& handwritingROI) {
         return "";
     }
     
+    std::cout << "[DEBUG OCR] Giriş görüntüsü: " << handwritingROI.cols << "x" 
+              << handwritingROI.rows << " channels=" << handwritingROI.channels() << std::endl;
+    
     try {
-        // Preprocess image for OCR
-        cv::Mat preprocessed = preprocessForOCR(handwritingROI);
+        // YENİ: Minimal preprocessing - orijinal görüntüyü kullan
+        // Ağır preprocessing el yazısını bozuyor!
+        cv::Mat preprocessed = handwritingROI.clone();
+        
+        std::cout << "[DEBUG OCR] Ön işleme sonrası: " << preprocessed.cols << "x" 
+                  << preprocessed.rows << std::endl;
+        
+        // Save preprocessed image for debugging
+        static int debugCounter = 0;
+        std::string debugFilename = "debug_ocr_preprocessed_" + std::to_string(debugCounter++) + ".jpg";
+        cv::imwrite(debugFilename, preprocessed);
+        std::cout << "[DEBUG OCR] Ön işlenmiş görüntü kaydedildi: " << debugFilename << std::endl;
         
         // Convert to Pix format
         Pix* pix = matToPix(preprocessed);
@@ -183,6 +190,8 @@ std::string OCRProcessor::recognizeText(const cv::Mat& handwritingROI) {
             return "";
         }
         
+        std::cout << "[DEBUG OCR] Pix dönüşümü başarılı" << std::endl;
+        
         // Set image for OCR
         tesseractAPI->SetImage(pix);
         
@@ -191,6 +200,9 @@ std::string OCRProcessor::recognizeText(const cv::Mat& handwritingROI) {
         
         // Get confidence
         lastConfidence = tesseractAPI->MeanTextConf();
+        
+        std::cout << "[DEBUG OCR] Ham metin: \"" << (rawText ? rawText : "NULL") 
+                  << "\" Güven: " << lastConfidence << "%" << std::endl;
         
         // Convert to string
         std::string text = rawText ? rawText : "";
@@ -205,6 +217,8 @@ std::string OCRProcessor::recognizeText(const cv::Mat& handwritingROI) {
         if (!text.empty()) {
             std::cout << "OCR Sonuç: \"" << text << "\" (Güven: " 
                      << lastConfidence << "%)" << std::endl;
+        } else {
+            std::cout << "[DEBUG OCR] Post-processing sonrası metin boş!" << std::endl;
         }
         
         return text;

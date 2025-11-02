@@ -119,6 +119,7 @@ bool HandwritingDetector::hasHandwriting(const cv::Mat& image, const cv::Rect& r
     cv::Mat roi = image(region);
     
     if (roi.empty()) {
+        std::cout << "[DEBUG] ROI boş!" << std::endl;
         return false;
     }
     
@@ -128,13 +129,19 @@ bool HandwritingDetector::hasHandwriting(const cv::Mat& image, const cv::Rect& r
     // Calculate pixel density
     double density = analyzePixelDensity(processed);
     
+    std::cout << "[DEBUG] Pixel yoğunluğu: " << (density * 100) << "% (min: " 
+              << (minimumPixelDensity * 100) << "%)" << std::endl;
+    
     // Quick check: if density is too low, no handwriting
     if (density < minimumPixelDensity) {
+        std::cout << "[DEBUG] Pixel yoğunluğu çok düşük!" << std::endl;
         return false;
     }
     
     // Additional check: verify connected components
     bool hasComponents = hasConnectedComponents(processed);
+    
+    std::cout << "[DEBUG] Connected components: " << (hasComponents ? "VAR" : "YOK") << std::endl;
     
     return hasComponents;
 }

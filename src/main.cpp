@@ -4,7 +4,33 @@
  * 
  * Features:
  * - Real-time camera capture
- * - Perspective correction
+            case QuestionRegion::FILL_IN_BLANK: {
+                // Check for handwriting
+                if (handwritingDetector.hasHandwriting(correctedSheet, region.region)) {
+                    // Extract and process with OCR
+                    cv::Mat roi = handwritingDetector.extractHandwritingROI(
+                        correctedSheet, region.region
+                    );
+                    
+                    std::cout << "[DEBUG] ROI boyutu: " << roi.cols << "x" << roi.rows << std::endl;
+                    
+                    // Save ROI for debugging
+                    std::string roiFilename = "debug_roi_q" + std::to_string(region.questionNumber) + ".jpg";
+                    cv::imwrite(roiFilename, roi);
+                    std::cout << "[DEBUG] ROI kaydedildi: " << roiFilename << std::endl;
+                    
+                    std::string text = ocrProcessor.recognizeText(roi);
+                    answer.textAnswer = text;
+                    
+                    std::cout << "Soru " << region.questionNumber 
+                             << ": \"" << text << "\"" << std::endl;
+                } else {
+                    answer.textAnswer = "";
+                    std::cout << "Soru " << region.questionNumber 
+                             << ": Boş" << std::endl;
+                }
+                break;
+            }rection
  * - Multiple choice bubble detection
  * - Fill-in-the-blank handwriting recognition (OCR)
  * - True/False question support
@@ -172,7 +198,7 @@ int main(int argc, char** argv) {
         std::unique_ptr<BubbleDetector> bubbleDetector = 
             std::make_unique<BubbleDetector>(0.6);
         std::unique_ptr<HandwritingDetector> handwritingDetector = 
-            std::make_unique<HandwritingDetector>(0.05);
+            std::make_unique<HandwritingDetector>(0.02);  // %5 -> %2'ye düşürdük
         std::unique_ptr<OCRProcessor> ocrProcessor = 
             std::make_unique<OCRProcessor>("tur");
         std::unique_ptr<SheetStructureAnalyzer> sheetAnalyzer = 
