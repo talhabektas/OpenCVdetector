@@ -131,6 +131,93 @@ target_link_libraries(live_reader
     ${OpenCV_LIBS}
 )
 
+# Photo Reader - Telefon fotoğraflarını oku (Bird's Eye View + Manuel Seçim)
+add_executable(photo_reader src/photo_reader.cpp)
+
+target_link_libraries(photo_reader
+    ${OpenCV_LIBS}
+)
+
+# Exam Grader - Sınav değerlendirme sistemi (El yazısı + True/False + Çoktan seçmeli)
+add_executable(exam_grader src/exam_grader.cpp)
+
+target_link_libraries(exam_grader
+    ${OpenCV_LIBS}
+)
+
+# Smart Exam Grader - AKILLI SINAV DEĞERLENDİRME (kağıt tespiti + dinamik ROI + kamera)
+add_executable(smart_exam_grader src/smart_exam_grader.cpp)
+
+target_link_libraries(smart_exam_grader
+    ${OpenCV_LIBS}
+    ${TESSERACT_LDFLAGS}
+    ${LEPTONICA_LDFLAGS}
+)
+
+target_include_directories(smart_exam_grader PRIVATE
+    ${TESSERACT_INCLUDE_DIRS}
+    ${LEPTONICA_INCLUDE_DIRS}
+)
+
+# Final Grader - GERÇEK KAĞITLAR İÇİN (page1.png + page2.png)
+add_executable(final_grader src/final_grader.cpp)
+
+target_link_libraries(final_grader
+    ${OpenCV_LIBS}
+    ${TESSERACT_LDFLAGS}
+    ${LEPTONICA_LDFLAGS}
+)
+
+target_include_directories(final_grader PRIVATE
+    ${TESSERACT_INCLUDE_DIRS}
+    ${LEPTONICA_INCLUDE_DIRS}
+)
+
+# ROI Selector - 4 NOKTA İLE DİKDÖRTGEN SEÇİMİ
+add_executable(roi_selector src/roi_selector.cpp)
+
+target_link_libraries(roi_selector
+    ${OpenCV_LIBS}
+)
+
+# Camera Exam Grader - KAMERA İLE CANLI SINAV DEĞERLENDİRME
+add_executable(camera_exam_grader src/camera_exam_grader.cpp)
+
+target_link_libraries(camera_exam_grader
+    ${OpenCV_LIBS}
+    ${TESSERACT_LDFLAGS}
+    ${LEPTONICA_LDFLAGS}
+)
+
+target_include_directories(camera_exam_grader PRIVATE
+    ${TESSERACT_INCLUDE_DIRS}
+    ${LEPTONICA_INCLUDE_DIRS}
+)
+
+# Test Manual Transform - MANUEL PERSPECTIVE TRANSFORM TESTİ
+add_executable(test_manual_transform src/test_manual_transform.cpp)
+target_link_libraries(test_manual_transform ${OpenCV_LIBS})
+
+# Test Corrected Image - DÜZELTİLMİŞ GÖRÜNTÜYü FINAL_GRADER İLE TEST ET
+add_executable(test_corrected_image src/test_corrected_image.cpp)
+target_link_libraries(test_corrected_image 
+    ${OpenCV_LIBS}
+    ${TESSERACT_LDFLAGS}
+    ${LEPTONICA_LDFLAGS}
+)
+target_include_directories(test_corrected_image PRIVATE
+    ${TESSERACT_INCLUDE_DIRS}
+    ${LEPTONICA_INCLUDE_DIRS}
+)
+
+# Compare Images - ORİJİNAL vs MANUEL DÜZELTİLMİŞ KARŞILAŞTIRMA
+add_executable(compare_images src/compare_images.cpp)
+target_link_libraries(compare_images ${OpenCV_LIBS})
+
+# ROI Comparison - ROI BÖLGE KARŞILAŞTIRMASI
+add_executable(roi_comparison src/roi_comparison.cpp)
+target_link_libraries(roi_comparison ${OpenCV_LIBS})
+
 # Print configuration
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 message(STATUS "OpenCV libs: ${OpenCV_LIBS}")
