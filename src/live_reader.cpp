@@ -1,6 +1,7 @@
 /**
  * CANLI EL YAZISI OKUYUCU
  * Kameradan canlı görüntü al, yazıları otomatik bul ve oku
+ * BIRD'S EYE VIEW desteği ile perspektif düzeltme
  */
 
 #include <opencv2/opencv.hpp>
@@ -16,6 +17,53 @@ std::map<int, std::string> answerKey = {
     {4, "Mustafa Kemal"},
     {5, "Cumhuriyet"}
 };
+
+// Global değişkenler - perspektif düzeltme için
+std::vector<cv::Point2f> selectedCorners;
+bool perspectiveMode = false;
+cv::Mat perspectiveCorrectedImage;
+
+// Mouse callback - köşe seçimi için
+void onMouse(int event, int x, int y, int flags, void* userdata) {
+    if (event == cv::EVENT_LBUTTONDOWN && perspectiveMode) {
+        if (selectedCorners.size() < 4) {
+            selectedCorners.push_back(cv::Point2f(x, y));
+            std::cout << "📍 Köşe " << selectedCorners.size() << " seçildi: (" 
+                      << x << ", " << y << ")" << std::endl;
+            
+            if (selectedCorners.size() == 4) {
+                std::cout << "✅ 4 köşe tamamlandı! Perspektif düzeltiliyor..." << std::endl;
+            }
+        }
+    }
+}
+
+// Perspektif düzeltme fonksiyonu
+cv::Mat applyPerspectiveCorrection(const cv::Mat& image, const std::vector<cv::Point2f>& corners) {
+    if (corners.size() != 4) {
+        return image.clone();
+    }
+    
+    // Hedef noktalar (A4 oranı: 210mm x 297mm ≈ 1:1.414)
+    float width = 800;
+    float height = 1131; // A4 oranı
+    
+    std::vector<cv::Point2f> dst = {
+        cv::Point2f(0, 0),
+        cv::Point2f(width - 1, 0),
+        cv::Point2f(width - 1, height - 1),
+        cv::Point2f(0, height - 1)
+    };
+    
+    // Perspektif dönüşüm matrisi
+    cv::Mat transformMatrix = cv::getPerspectiveTransform(corners, dst);
+    
+    // Dönüşümü uygula
+    cv::Mat warped;
+    cv::warpPerspective(image, warped, transformMatrix, cv::Size(width, height));
+    
+    return warped;
+}
 
 struct TextBlock {
     cv::Rect region;
@@ -112,7 +160,7 @@ bool compareAnswers(const std::string& student, const std::string& correct) {
 
 int main() {
     std::cout << "\n╔══════════════════════════════════════════════╗" << std::endl;
-    std::cout << "║   CANLI EL YAZISI OKUYUCU                   ║" << std::endl;
+    std::cout << "║   CANLI EL YAZISI OKUYUCU + BIRD'S EYE VIEW ║" << std::endl;
     std::cout << "╚══════════════════════════════════════════════╝\n" << std::endl;
     
     // Kamerayı aç
@@ -133,12 +181,18 @@ int main() {
     }
     
     std::cout << "\n📷 KULLANIM:" << std::endl;
+    std::cout << "   P     = Perspektif düzeltme modu (4 köşeye tıkla)" << std::endl;
+    std::cout << "   R     = Perspektif sıfırla (normal moda dön)" << std::endl;
     std::cout << "   SPACE = Görüntü yakala ve oku" << std::endl;
     std::cout << "   ESC   = Çıkış" << std::endl;
     std::cout << "\n──────────────────────────────────────────────\n" << std::endl;
     
     cv::Mat frame;
     bool processing = false;
+    bool usePerspective = false;
+    
+    cv::namedWindow("El Yazisi Okuyucu");
+    cv::setMouseCallback("El Yazisi Okuyucu", onMouse, nullptr);
     
     while (true) {
         camera >> frame;
@@ -147,25 +201,69 @@ int main() {
             break;
         }
         
-        cv::Mat display = frame.clone();
+        cv::Mat display;
+        cv::Mat workingFrame;
+        
+        // Perspektif düzeltme aktifse düzeltilmiş görüntüyü kullan
+        if (usePerspective && !perspectiveCorrectedImage.empty()) {
+            workingFrame = perspectiveCorrectedImage.clone();
+        } else {
+            workingFrame = frame.clone();
+        }
+        
+        display = workingFrame.clone();
         
         if (!processing) {
-            // Canlı görüntü - yazı bölgelerini göster
-            auto regions = findTextRegions(frame);
-            
-            for (size_t i = 0; i < regions.size(); i++) {
-                cv::rectangle(display, regions[i], cv::Scalar(0, 255, 0), 2);
-                std::string label = "Bölge " + std::to_string(i + 1);
-                cv::putText(display, label,
-                           cv::Point(regions[i].x, regions[i].y - 5),
-                           cv::FONT_HERSHEY_SIMPLEX, 0.5,
-                           cv::Scalar(0, 255, 0), 1);
+            // Perspektif modu aktifse köşeleri göster
+            if (perspectiveMode) {
+                // Seçilen köşeleri çiz
+                for (size_t i = 0; i < selectedCorners.size(); i++) {
+                    cv::circle(display, selectedCorners[i], 8, cv::Scalar(0, 0, 255), -1);
+                    cv::putText(display, std::to_string(i + 1),
+                               cv::Point(selectedCorners[i].x + 10, selectedCorners[i].y - 10),
+                               cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+                }
+                
+                // Çizgileri çiz
+                if (selectedCorners.size() > 1) {
+                    for (size_t i = 0; i < selectedCorners.size() - 1; i++) {
+                        cv::line(display, selectedCorners[i], selectedCorners[i + 1],
+                                cv::Scalar(0, 255, 255), 2);
+                    }
+                    if (selectedCorners.size() == 4) {
+                        cv::line(display, selectedCorners[3], selectedCorners[0],
+                                cv::Scalar(0, 255, 255), 2);
+                    }
+                }
+                
+                // Bilgi
+                std::string info = "PERSPEKTIF MODU: Koseler " + 
+                                  std::to_string(selectedCorners.size()) + "/4";
+                cv::putText(display, info, cv::Point(10, 30),
+                           cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 2);
+                cv::putText(display, "Siralama: Sol-Ust, Sag-Ust, Sag-Alt, Sol-Alt",
+                           cv::Point(10, 60),
+                           cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 0), 1);
             }
-            
-            // Bilgi
-            cv::putText(display, "SPACE: Yakala ve Oku | ESC: Cikis",
-                       cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX,
-                       0.7, cv::Scalar(0, 255, 0), 2);
+            // Normal mod - yazı bölgelerini göster
+            else {
+                auto regions = findTextRegions(workingFrame);
+                
+                for (size_t i = 0; i < regions.size(); i++) {
+                    cv::rectangle(display, regions[i], cv::Scalar(0, 255, 0), 2);
+                    std::string label = "Bolge " + std::to_string(i + 1);
+                    cv::putText(display, label,
+                               cv::Point(regions[i].x, regions[i].y - 5),
+                               cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                               cv::Scalar(0, 255, 0), 1);
+                }
+                
+                // Bilgi
+                std::string mode = usePerspective ? "[DUZELTILMIS]" : "[NORMAL]";
+                cv::putText(display, mode + " P:Perspektif | R:Reset | SPACE:Oku | ESC:Cikis",
+                           cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX,
+                           0.6, cv::Scalar(0, 255, 0), 2);
+            }
         }
         
         cv::imshow("El Yazisi Okuyucu", display);
@@ -175,13 +273,38 @@ int main() {
         if (key == 27) { // ESC
             break;
         }
+        else if (key == 'p' || key == 'P') { // Perspektif modu
+            if (!perspectiveMode) {
+                perspectiveMode = true;
+                selectedCorners.clear();
+                std::cout << "\n🔵 PERSPEKTİF MODU AKTİF!" << std::endl;
+                std::cout << "📍 4 köşeye tıklayın (sıralama: sol-üst, sağ-üst, sağ-alt, sol-alt)" << std::endl;
+            }
+        }
+        else if (key == 'r' || key == 'R') { // Reset
+            perspectiveMode = false;
+            usePerspective = false;
+            selectedCorners.clear();
+            perspectiveCorrectedImage.release();
+            std::cout << "\n♻️  Perspektif sıfırlandı, normal moda dönüldü" << std::endl;
+        }
         else if (key == 32 && !processing) { // SPACE
+            // Eğer perspektif modundaysa ve 4 köşe seçildiyse düzelt
+            if (perspectiveMode && selectedCorners.size() == 4) {
+                perspectiveCorrectedImage = applyPerspectiveCorrection(frame, selectedCorners);
+                usePerspective = true;
+                perspectiveMode = false;
+                std::cout << "✅ Perspektif düzeltmesi tamamlandı!" << std::endl;
+                std::cout << "   SPACE ile okuma yapabilir, R ile sıfırlayabilirsiniz\n" << std::endl;
+                continue;
+            }
+            
             processing = true;
             
             std::cout << "\n📸 Görüntü yakalandı!" << std::endl;
             std::cout << "🔍 Yazı bölgeleri aranıyor..." << std::endl;
             
-            auto regions = findTextRegions(frame);
+            auto regions = findTextRegions(workingFrame);
             std::cout << "   Bulunan bölge: " << regions.size() << "\n" << std::endl;
             
             if (regions.empty()) {
@@ -191,14 +314,14 @@ int main() {
             }
             
             // Her bölgeyi işle
-            cv::Mat result = frame.clone();
+            cv::Mat result = workingFrame.clone();
             int questionNum = 1;
             int correct = 0;
             int wrong = 0;
             
             for (const auto& region : regions) {
                 // ROI kaydet
-                cv::Mat roi = frame(region);
+                cv::Mat roi = workingFrame(region);
                 std::string filename = "temp_region.jpg";
                 cv::imwrite(filename, roi);
                 
