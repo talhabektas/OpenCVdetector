@@ -105,11 +105,33 @@ string ocrText(tesseract::TessBaseAPI* ocr, const Mat& roi) {
     // HAM GÖRÜNTÜ - Preprocessing TAMAMEN KALDIRILDI (bulanıklaştırıyor, gri lekeler oluşturuyor)
     Mat preprocessed;
     
-    // 1. Grayscale'e çevir
+    // 1. RENK DENGELEMESİ - Sarı/mavi ışık fark etmez, beyaza normalize et
+    Mat balanced;
     if (roi.channels() == 3) {
-    cvtColor(roi, preprocessed, COLOR_BGR2GRAY);
+        // Simple White Balance - Gray World Algorithm
+        vector<Mat> channels;
+        split(roi, channels);
+        
+        double avgB = mean(channels[0])[0];
+        double avgG = mean(channels[1])[0];
+        double avgR = mean(channels[2])[0];
+        double avgGray = (avgB + avgG + avgR) / 3.0;
+        
+        // Her kanalı normalize et
+        channels[0] *= avgGray / avgB;  // Blue
+        channels[1] *= avgGray / avgG;  // Green
+        channels[2] *= avgGray / avgR;  // Red
+        
+        merge(channels, balanced);
     } else {
-        preprocessed = roi.clone();
+        balanced = roi.clone();
+    }
+    
+    // 2. Grayscale'e çevir (artık renk dengeli)
+    if (balanced.channels() == 3) {
+        cvtColor(balanced, preprocessed, COLOR_BGR2GRAY);
+    } else {
+        preprocessed = balanced.clone();
     }
     
     // DEBUG: Preprocessing öncesi kontrol
@@ -447,11 +469,36 @@ vector<Point2f> detectPaperCorners(const Mat& image) {
     Mat hsv;
     cvtColor(image, hsv, COLOR_BGR2HSV);
     
-    // 2. BEYAZ RENK MASKESİ OLUŞTUR (Gevşetildi - daha fazla beyaz alan yakala)
-    // Beyaz: S (saturation) düşük, V (value) yüksek
-    // Threshold'ları gevşettik: V 200 → 150, S 30 → 50 (daha fazla beyaz alan)
+    // ADAPTIVE THRESHOLD - Işık seviyesine göre otomatik ayarlama
+    Mat grayCheck;
+    cvtColor(image, grayCheck, COLOR_BGR2GRAY);
+    double avgBrightness = mean(grayCheck)[0];
+    
+    // Parlaklığa göre threshold belirle
+    int minValue, maxSat;
+    if (avgBrightness < 80) {
+        // Çok karanlık ortam
+        minValue = 100;
+        maxSat = 80;
+        if (frameCount % 30 == 0) {
+            cout << "DEBUG: Karanlık ortam tespit edildi (avg: " << avgBrightness << "), threshold gevşetildi" << endl;
+        }
+    } else if (avgBrightness < 120) {
+        // Orta karanlık
+        minValue = 130;
+        maxSat = 60;
+        if (frameCount % 30 == 0) {
+            cout << "DEBUG: Düşük ışık (avg: " << avgBrightness << "), threshold ayarlandı" << endl;
+        }
+    } else {
+        // Normal/parlak ortam
+        minValue = 150;
+        maxSat = 50;
+    }
+    
+    // 2. BEYAZ RENK MASKESİ OLUŞTUR (ADAPTIVE)
     Mat whiteMask;
-    inRange(hsv, Scalar(0, 0, 150), Scalar(180, 50, 255), whiteMask); // Beyaz alanlar (gevşetildi)
+    inRange(hsv, Scalar(0, 0, minValue), Scalar(180, maxSat, 255), whiteMask);
     
     // Maskeyi biraz genişlet (morfolojik açılım)
     Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
@@ -1027,10 +1074,10 @@ void processResults(tesseract::TessBaseAPI* ocr) {
         
         cout << "  [DEBUG] Soru " << (i+1) << ": TRUE=" << (trueFill*100) << "% | FALSE=" << (falseFill*100) << "%" << endl;
         
-        // DÜZELT İLMİŞ MANTIK: En yüksek fill ratio'yu seç (threshold: %25)
-        // Eğer ikisi de %25'in altındaysa boş bırakılmış
+        // DÜZELT İLMİŞ MANTIK: En yüksek fill ratio'yu seç (threshold: %12)
+        // Eğer ikisi de %12'nin altındaysa boş bırakılmış
         bool studentAnswer;
-        if (trueFill < 0.25 && falseFill < 0.25) {
+        if (trueFill < 0.12 && falseFill < 0.12) {
             // İkisi de boş
             studentAnswer = false;  // Default FALSE (boş)
             cout << "  ⚠️  Soru " << (i+1) << ": İkisi de boş (TRUE=" << (trueFill*100) 
@@ -1077,18 +1124,19 @@ void processResults(tesseract::TessBaseAPI* ocr) {
     cout << "\n📄 SAYFA 2 (Çoktan Seçmeli)\n" << endl;
     cout << "🔘 Çoktan Seçmeli:\n" << endl;
     
+    // MANUEL BULUNMUŞ ROI - find_roi.py ile tespit edildi
     vector<vector<Rect>> mcOptions = {
         {
-            Rect(90, 310, 80, 30),      // A
-            Rect(90, 337, 80, 30),      // B
-            Rect(85, 356, 90, 35),      // C - genişletildi (X: 90→85, W: 80→90)
-            Rect(90, 387, 80, 30)       // D
+            Rect(96, 305, 101, 24),     // A - Soru 1
+            Rect(99, 340, 100, 21),     // B
+            Rect(97, 373, 111, 34),     // C ← İŞARETLİ
+            Rect(98, 416, 106, 25)      // D
         },
         {
-            Rect(100, 503, 90, 25),     // A
-            Rect(100, 530, 140, 25),    // B
-            Rect(100, 557, 90, 25),     // C
-            Rect(100, 581, 140, 35)     // D
+            Rect(85, 570, 119, 33),     // A - Soru 2
+            Rect(87, 611, 120, 30),     // B (düzeltildi: 222→120)
+            Rect(90, 647, 137, 27),     // C
+            Rect(71, 681, 169, 45)      // D ← İŞARETLİ
         }
     };
     
