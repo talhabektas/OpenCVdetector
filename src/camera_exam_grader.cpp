@@ -1329,13 +1329,41 @@ int main() {
         // OTOMATIK YAKALAMA MODU - Cooldown sırasında algılama yapma
         if (autoCaptureMode && !processingPage && !selectingCorners && cooldownFrames == 0) {
             try {
-                // DEBUG: Tüm konturları çiz
+                // ADAPTIVE WHITE MASK - Işığa göre otomatik ayarlama
                 Mat gray;
                 cvtColor(frame, gray, COLOR_BGR2GRAY);
+                
+                // Ortalama parlaklığı ölç
+                Scalar meanBrightness = mean(gray);
+                double avgBright = meanBrightness[0];
+                
+                // Adaptive threshold - Karanlıkta daha düşük, aydınlıkta daha yüksek
+                int minValue = 150;  // Default
+                int maxSat = 50;     // Default
+                
+                if (avgBright < 80) {
+                    // ÇOK KARANLIK - Threshold'u düşür
+                    minValue = 120;
+                    maxSat = 70;
+                    cout << "  [ADAPTIVE] Karanlık ortam tespit edildi (avg=" << avgBright << "), threshold=" << minValue << endl;
+                } else if (avgBright < 120) {
+                    // KARANLIK - Orta threshold
+                    minValue = 150;
+                    maxSat = 60;
+                } else if (avgBright > 180) {
+                    // ÇOK AYDINLIK - Threshold'u artır
+                    minValue = 200;
+                    maxSat = 40;
+                } else {
+                    // NORMAL - Default değerler
+                    minValue = 170;
+                    maxSat = 50;
+                }
+                
                 Mat hsv;
                 cvtColor(frame, hsv, COLOR_BGR2HSV);
                 Mat whiteMask;
-                inRange(hsv, Scalar(0, 0, 200), Scalar(180, 50, 255), whiteMask);
+                inRange(hsv, Scalar(0, 0, minValue), Scalar(180, maxSat, 255), whiteMask);
                 Mat blurred;
                 GaussianBlur(gray, blurred, Size(9, 9), 0);
                 Mat edges;
